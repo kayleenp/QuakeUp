@@ -1,3 +1,4 @@
+
 #load libraries
 library(shiny)
 library(shinyMobile)
@@ -19,17 +20,19 @@ library(rvest)
 library(jsonlite)
 library(kableExtra)
 library(formattable)
+library(geosphere)
+library(NISTunits)
 
 #myscript <- system.file("extdata", "earthquake.R", package = "taskscheduleR")
 #
 #taskscheduler_create(taskname = "update_BMKG_12HRS", rscript = myscript,
- #                    schedule = "HOURLY", starttime = "00:00", modifier = 12)
+#                    schedule = "HOURLY", starttime = "00:00", modifier = 12)
 
 setwd("./10Data")
 url <- 'https://www.bmkg.go.id/gempabumi/gempabumi-terkini.bmkg'
 
 out_df <- url %>% read_html() %>% html_table() %>% .[[1]]
-head(out_df)
+print(head(out_df))
 write.csv(out_df, 'current_earthquake_data/current_earthquake_data.csv', row.names = FALSE)
 
 data <- read.csv('current_earthquake_data/current_earthquake_data.csv')
@@ -56,7 +59,10 @@ GetExchangeRates <- function(from, to, dt=Sys.Date()) {
   }
   return(result)
 }
-
+r_birthplace_map <- leaflet() %>%
+  addTiles() %>%  # use the default base map which is OpenStreetMap tiles
+  addMarkers(lng=174.768, lat=-36.852,
+             popup="The birthplace of R")
 reverseGeoCodeCity <- function(dataframe, row) {
   
   
@@ -73,143 +79,137 @@ reverseGeoCodeCity <- function(dataframe, row) {
   # return(cityName$locality)
 }
 
-TestExchangeRates <- function() {
-  from <- c("CAD", "JPY", "USD")
-  to <- c("USD", "USD", "EUR")
-  GetExchangeRates(from, to)
-}
 
 
 
-#UI
 shiny::shinyApp(
-  ui=f7Page(
-    title = "Quake Up",
-    f7Appbar(
-      f7Flex(f7Back(targetId = "tabset"),f7Next(targetId = "tabset"))
-    ),
-    f7TabLayout( navbar = f7Navbar(
-      title = "Quake Up",
-      hairline = FALSE,
-      shadow = TRUE
-    ),
-    f7Tabs(
-      animated=FALSE,
-      swipeable =FALSE,
-      id="tabs",
-      f7Tab(
-        tabName="Map Of Indonesia",
-        icon=f7Icon("world"),
-        active=TRUE,
-        f7Card(f7Row(uiOutput("map_type"))),
-        f7Card(expandable = TRUE, swipeToClose=TRUE,
-               f7Accordion(
-                 inputId = "myaccordion1",
-                 f7AccordionItem(
-                   open=TRUE,
-                   title = "SHOW MAP",
-                   f7Block( ui <- fluidPage(  
-                     
-                     mainPanel( 
-                       #this will create a space for us to display our map
-                       leafletOutput(outputId = "mymap", width="1820", height="860"),
-                       #this allows me to put the checkmarks ontop of the map to allow people to view earthquake depth or overlay a heatmap
-                       absolutePanel(bottom=50, left = 20, setBackgroundColor("white"), prettyCheckbox(
-                         inputId = "markers", label = "Depth",animation = "pulse",
-                         status = "success", outline = TRUE,  bigger = FALSE, inline=TRUE, thick = TRUE
-                       ),
-                       prettyCheckbox(
-                         inputId = "heat", label = "uHeatmap", animation = "pulse", thick= TRUE,
-                         status = "success", outline = TRUE, inline=TRUE
-                       )
-                       
-                       )
-                     ), ),
-                     open = TRUE
-                   )
-                 ),
-               ),f7Card( height="500",
-               f7Block( actionButton ("current_eq_act", "SHOW CURRENT EARTHQUAKE",class = "btn btn-info"))) ,f7Row(f7BlockTitle(title="PREDICT EARTHQUAKE", size="medium")),
-               f7Card( 
-                 title = "",
-                 height="1000",
-                 f7Row(f7Col(actionButton("slider_input_act", "SLIDER INPUT")), f7Col(actionButton("number_input_act", "INPUT BY NUMBERS"))),
-                 f7Col(uiOutput("inputControls")),
-                 f7Row(pickerInput(
-                   inputId = "prediction_model",
-                   label = "PREDICTION MODEL",
-                   choices = paste( c("SVM", "NAIVEBAYES", "MULTILOGREGRESSION")),
-                   multiple = FALSE,
-                   selected = "SVM",
-                   choicesOpt = list(
-                     content = sprintf(
-                       paste( c("SVM", "NAIVEBAYES", "MULTILOGREGRESSION")))))), actionButton("predict", "PREDICT", class = "btn btn-success", icon=) 
-                 
-               ), f7Block(uiOutput="date_predicted_info"), f7Card(title="", f7Row(uiOutput("table_title")),tableOutput("pred_result_table_ui"))
-               
-               
-               
-               
-               
-        )), 
-      f7Tab(
-        tabName = "Weather",
-        icon = f7Icon("cloud_upload"),
-        active = FALSE,
-        f7Shadow(
-          intensity = 10,
-          hover = TRUE,
-          f7Card(
-            title = "Card header",
-            
-            footer = tagList(
-              f7Button(color = "blue", label = "My button", src = "https://www.google.com"),
-              f7Badge("Badge", color = "green")
-            )
-          )
-        )
-      ),
-      f7Tab(
-        tabName = "Currency",
-        icon = f7Icon("money_dollar"),
-        active = FALSE,
-        f7Shadow(
-          intensity = 10,
-          hover = TRUE,
-          f7Card(
-            title = "Currency Converter", 
-            ui <- fluidPage(
-              titlePanel("CURRENCY CONVERTER"), mainPanel(  pickerInput(
-                inputId = "caption",
-                label = "EUR -> ",
-                choices = paste( c("IDR", "USD", "SGD")),
-                multiple = FALSE,
-                selected = "IDR",
-                choicesOpt = list(
-                  content = sprintf(
-                    paste( c("IDR", "USD", "SGD"))))
-              ), verbatimTextOutput("value"), pickerInput(
-                inputId = "convertTo",
-                label = "EUR -> ",
-                choices = paste( c("IDR", "USD", "EUR")),
-                multiple = FALSE,
-                selected = "IDR",
-                choicesOpt = list(
-                  content = sprintf(
-                    paste( c("IDR", "USD", "EUR"))))
-              ), verbatimTextOutput("valueConvertTo"),numericInput("currencyNumber", "Currency Number", 10),
-              verbatimTextOutput("convert")), actionButton("convert", "CONVERT")
-            )
-            
-          )
-        )
-      )
-    )
-    )),
   
-  #EARTHQUAKE DATA
-  server <- function(input, output, session) {
-    #define the color pallate for the magnitidue of the earthquake
+  
+  
+  ui = f7Page( init = f7Init(skin = "auto", theme = "light"),
+               title = "Tab Layout",
+               f7TabLayout(
+                 navbar = f7Navbar(title = "QuakeUp"),
+                 f7Tabs(
+                   id = "tabdemo",
+                   swipeable = FALSE,
+                   animated = TRUE,
+                   f7Tab(tabName = "Prediction", icon= f7Icon("waveform_circle", fill=TRUE), f7Align(h1("PREDICT EARTHQUAKE"), side="center"),
+                         f7Card(f7Block(
+                           f7Accordion(
+                             inputId = "myaccordion1",
+                             f7AccordionItem(
+                               open=TRUE,
+                               title = "SHOW MAP",
+                               
+                               #this will create a space for us to display our map
+                               leafletOutput(outputId = "mymap", width="100%", height="450"),
+                               #this allows me to put the checkmarks ontop of the map to allow people to view earthquake depth or overlay a heatmap
+                               
+                               absolutePanel(bottom=50, left = 20, setBackgroundColor("white"),f7Toggle(
+                                 inputId = "markers",
+                                 label = "Depth",
+                                 color = "blue"
+                                 
+                               ),
+                               
+                               f7Toggle(
+                                 inputId = "heat",
+                                 label = "Heatmap",
+                                 color = "pink"
+                               )),
+                               
+                               
+                               
+                             ), ),
+                           open = TRUE
+                         )
+                         ,
+                         
+                         
+                         
+                         f7Card( 
+                           title = "",
+                           height="1000",
+                           f7Row(f7Col(f7Button(inputId="slider_input_act", label="SLIDER INPUT")), f7Col(f7Button(inputId="number_input_act", label= "INPUT BY NUMBERS"))),
+                           f7Col(uiOutput("inputControls")), f7Row(f7Block(height="100")),
+                           
+                           f7Row(f7Picker(
+                             inputId = "prediction_model",
+                             placeholder = NULL,
+                             choices = c("SVM", "NAIVEBAYES", "MULTILOGREGRESSION"),
+                             label = "Choose Prediction Model :"
+                             
+                           )), f7Block(hairlines=TRUE,  f7Button(inputId="predict", label="PREDICT", color="green", shadow=TRUE, size="large")), f7Block(title=""),
+                           f7Card(title="", f7Block(uiOutput("table_title")),f7Block(DT::dataTableOutput("pred_result_table_ui"), style = "height:500px; overflow-y: scroll;overflow-x: scroll;")))
+                         
+                         
+                         
+                         
+                         
+                         )),
+                   f7Tab(tabName = "Current", icon= f7Icon("calendar_today", lib="md"),  f7Align(h1("CURRENT EARTHQUAKE"), side="center"), f7Card(title = "Current Earthquake", f7Block(f7Accordion(
+                     inputId = "myaccordion1",
+                     f7AccordionItem(
+                       open=TRUE,
+                       title = "SHOW MAP",  leafletOutput(outputId = "mymap_current", width="100%", height="400"), 
+                       absolutePanel(bottom=50, left = 20, setBackgroundColor("white"),   f7Toggle(
+                         inputId = "markers_current",
+                         label = "Depth",
+                         color = "blue"
+                         
+                       ),
+                       
+                       f7Toggle(
+                         inputId = "heat_current",
+                         label = "Heatmap",
+                         color = "pink"
+                       ),
+                       
+                       ))))), 
+                     tags$script('
+               $(document).ready(function () {
+               navigator.geolocation.getCurrentPosition(onSuccess, onError);
+              
+                function onError (err) {
+                  Shiny.onInputChange("geolocation", false);
+                }
+                      
+                function onSuccess (position) {
+                  setTimeout(function () {
+                    var coords = position.coords;
+                    console.log(coords.latitude + ", " + coords.longitude);
+  
+                    Shiny.onInputChange("lat", coords.latitude);
+                    Shiny.onInputChange("long", coords.longitude);
+                  }, 1100)
+                }
+              });
+                      '),  f7BlockTitle(title="YOUR LOCATION:"),
+                     f7Row(width = 2,
+                           verbatimTextOutput("lat"),
+                           verbatimTextOutput("long")),  
+                     f7Card( height="500",
+                             f7Block( f7Button(inputId="current_eq_act", label="Activate Location"))), f7Card(title="Current Earthquake",DT::dataTableOutput("current_result_table_ui"), style = "height:500px; overflow-y: scroll;overflow-x: scroll;")
+                   ), 
+                   f7Tab(tabName = "Tab 3", "tab 3 text")
+                 )
+               )
+  ),
+  server = function(input, output, session) {
+    output$selected <- renderText(input$tabdemo)
+    output$lat <- renderPrint({
+      input$lat
+    })
+    output$table_title <- renderUI({ HTML(paste(h4("Date Predicted:" )))})
+    output$long <- renderPrint({
+      input$long
+    })
+    
+    output$geolocation <- renderPrint({
+      input$geolocation
+    })
+    #  updateF7Tabs(session, id = "tabdemo", selected = "Tab 1")
     pal <- colorNumeric(
       palette = c('gold', 'orange', 'dark orange', 'orange red', 'red', 'dark red'),
       domain = data$Magnitudo)
@@ -220,36 +220,27 @@ shiny::shinyApp(
       domain = data$depth_type
     )
     
-    #create the map
     output$mymap <- renderLeaflet({
       leaflet(data, width="1000", height="1000") %>% 
-        setView(lng =  113.9213257, lat = -0.789275, zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
+        setView(lng =  113.9213257, lat = -0.789275, zoom = 6)  %>% #setting the view over ~ center of Indonesia
         addTiles() %>%
-        addFullscreenControl() %>% 
+        addFullscreenControl()
+    })
+    
+    ##CURRENT MAP 
+    
+    output$mymap_current <- renderLeaflet({
+      leaflet(data, width="1000", height="1000") %>% 
+        setView(lng =  113.9213257, lat = -0.789275, zoom = 6)  %>% #setting the view over ~ center of Indonesia
+        addTiles() %>%
+        addFullscreenControl() %>%
         addCircles(data = data, lat = ~ Lintang, lng = ~ Bujur, weight = 1, radius = ~sqrt(Magnitudo)*25000, popup = paste0("Wilayah: ", data$Wilayah, "<br>", "Lintang: ", data$Lintang, "<br>", "Bujur: ", data$Bujur, "<br>", "Kedalaman: ", data$Kedalaman, "<br>", "Waktu Gempa: ", data$Waktu.Gempa, "<br>", "Magnitudo: ", data$Magnitudo), label = ~as.character(paste0("Magnitude: ", sep = " ", Magnitudo)), color = ~pal(Magnitudo), fillOpacity = 0.5)
     })
     
-    #create the text output
-    output$days_output <- renderText( {input$days_input} )
-    
-    #next we use the observe function to make the checkboxes dynamic. If you leave this part out you will see that the checkboxes, when clicked on the first time, display our filters...But if you then uncheck them they stay on. So we need to tell the server to update the map when the checkboxes are unchecked.
-    #observe({
-    #  proxy <- leafletProxy("mymap", data = data)
-    #  proxy %>% clearMarkers()
-    #  if (input$markers) {
-    #    proxy %>% addCircleMarkers(stroke = FALSE, color = ~pal2(depth_type), fillOpacity = 0.2, label = ~as.character(paste0("Magnitude: ", sep = " ", Magnitudo))) %>%
-    #      addLegend("bottomright", pal = pal2, values = data$depth_type,
-    #                title = "Depth Type",
-    #                opacity = 1)}
-    #  else {
-    #    proxy %>% clearMarkers() %>% clearControls()
-    #  }
-    #   })
-    
     observe({
-      proxy <- leafletProxy("mymap", data = data)
+      proxy <- leafletProxy("mymap_current", data = data)
       proxy %>% clearMarkers()
-      if (input$heat) {
+      if (input$heat_current) {
         proxy %>%  addHeatmap(lng=~Bujur, lat=~Lintang, intensity = ~Magnitudo, blur =  10, max = 0.05, radius = 15) 
       }
       else{
@@ -259,50 +250,33 @@ shiny::shinyApp(
       
     })
     
-    observeEvent(input$convert, {
-      currencyName<-input$caption
-      rowNumberInputData <- which(grepl(currencyName, mydata$name))
-      currency <- mydata[rowNumberInputData, "value"]   
+  
+    observe( {
       
-      
-      # output$table <- DT::renderDataTable(DT::datatable({liveish_data()}))
-      output$value <- renderPrint({ mydata[which(mydata$name==input$caption),]})
-      
-      output$convert<- renderPrint({ currency*input$currencyNumber })
-      
-    })
-    output$map_type<- renderUI({ f7BlockTitle(title="Current Earthquke", size="medium") })
-    output$table_title <- renderUI({ f7BlockTitle(title="Current Earthquke", size="medium") })
-    
-    output$pred_result_table_ui <- function() {
-      
-      data %>%
-        #mutate(car = rownames(.)) %>%
-        mutate(data$MAG <- color_tile("white", "orange")(data$MAG)) %>%
-        select(everything()) %>%
-        #filter(mpg <= input$mpg) %>%
-        knitr::kable("html") %>%
-        kable_styling("striped", full_width = F) %>%   scroll_box(width = "100%", height = "700px")
-    }
-    observeEvent(input$current_eq_act, {
-      output$table_title <- renderUI({ f7BlockTitle(title="Current Earthquke", size="medium") })
-      
+      if(!isTruthy(input$lat) && !isTruthy(input$long)){
+        data$distance = "NULL"
+        f7Toast(session, text="Turn on your GPS to activate location feature", position="center")
+      }
+      else{
       output$map_type<- renderUI({ f7BlockTitle(title="Current Earthquke", size="medium") })  
-        
-      output$mymap <- renderLeaflet({
+      EQLocation <- cbind(data$Bujur,  data$Lintang)
+      YourLocation <- cbind(input$long, input$lat)
+      data$distance <- (distHaversine(EQLocation, YourLocation)/1000)
+      print(head(data))
+      output$mymap_current <- renderLeaflet({
         leaflet(data, width="1000", height="1000") %>% 
-          setView(lng =  113.9213257, lat = -0.789275, zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
+          setView(lng =  input$long,  lat = input$lat,zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
           addTiles() %>%
-          addFullscreenControl() %>% 
+          addFullscreenControl() %>% addMarkers(lng=input$long, lat=input$lat)%>% 
           addCircles(data = data, lat = ~ Lintang, lng = ~ Bujur, weight = 1, radius = ~sqrt(Magnitudo)*25000, popup = paste0("Wilayah: ", data$Wilayah, "<br>", "Lintang: ", data$Lintang, "<br>", "Bujur: ", data$Bujur, "<br>", "Kedalaman: ", data$Kedalaman, "<br>", "Waktu Gempa: ", data$Waktu.Gempa, "<br>", "Magnitudo: ", data$Magnitudo), label = ~as.character(paste0("Magnitude: ", sep = " ", Magnitudo)), color = ~pal(Magnitudo), fillOpacity = 0.5)
       })
-      
+      }
       
       #next we use the observe function to make the checkboxes dynamic. If you leave this part out you will see that the checkboxes, when clicked on the first time, display our filters...But if you then uncheck them they stay on. So we need to tell the server to update the map when the checkboxes are unchecked.
       observe({
-        proxy <- leafletProxy("mymap", data = data)
+        proxy <- leafletProxy("mymap_current", data = data)
         proxy %>% clearMarkers()
-        if (input$markers) {
+        if (input$markers_current) {
           proxy %>% addCircleMarkers(stroke = FALSE, color = ~pal2(depth_type), fillOpacity = 0.2, label = ~as.character(paste0("Magnitude: ", sep = " ", Magnitudo))) %>%
             addLegend("bottomright", pal = pal2, values = data$depth_type,
                       title = "Depth Type",
@@ -313,9 +287,9 @@ shiny::shinyApp(
       })
       
       observe({
-        proxy <- leafletProxy("mymap", data = data)
+        proxy <- leafletProxy("mymap_current", data = data)
         proxy %>% clearMarkers()
-        if (input$heat) {
+        if (input$heat_current) {
           proxy %>%  addHeatmap(lng=~Bujur, lat=~Lintang, intensity = ~Magnitudo, blur =  10, max = 0.05, radius = 15) 
         }
         else{
@@ -324,16 +298,11 @@ shiny::shinyApp(
         
         
       })
-    output$pred_result_table_ui <- function() {
-      
-      data %>%
-        #mutate(car = rownames(.)) %>%
-        mutate(data$MAG <- color_tile("white", "orange")(data$MAG)) %>%
-        select(everything()) %>%
-        #filter(mpg <= input$mpg) %>%
-        knitr::kable("html") %>%
-        kable_styling("striped", full_width = F) %>%   scroll_box(width = "100%", height = "700px")
-    }})
+      output$current_result_table_ui =
+        
+        DT::renderDataTable({as.datatable(formattable(data,  list(
+          Magnitudo = color_tile("transparent", "red"), height="100")
+        ))})})
     
     output$inputControls <- renderUI({tagList(
       
@@ -375,7 +344,7 @@ shiny::shinyApp(
       
       
       output$inputControls <- renderUI({tagList(
-       
+        
         f7BlockTitle(title = "INPUT DAYS TO PREDICT", size = "medium"), chooseSliderSkin("Flat"),
         f7Slider(
           inputId = "days_input",
@@ -393,7 +362,7 @@ shiny::shinyApp(
     observeEvent(input$predict, {
       
       output$map_type<- renderUI({ f7BlockTitle(title="Earthquake Prediction", size="medium") })
-      output$table_title <- renderUI({ f7BlockTitle(title="Earthquake Prediction", size="medium") })
+      
       if(input$prediction_model == "SVM"){
         
         mydir = "2020eq-data/SVM/Hasil"
@@ -409,7 +378,7 @@ shiny::shinyApp(
       }
       myfiles = list.files(path=mydir , pattern = "*.csv",full.names = TRUE)
       myfiles = mixedsort(sort(myfiles))
-      days_input = (input$days_input) %% 365
+      days_input = (input$days_input) %% 367
       
       print("PREDICTION DATE :")
       
@@ -418,7 +387,7 @@ shiny::shinyApp(
       
       sumDate = (as.Date(dateToPredict) - as.Date("2020-01-01"))
       dateInFile = as.vector(sumDate)
-      
+      output$table_title <- renderUI({ HTML(paste(h4("Date Predicted :"), h2(dateToPredict) ))})
       print("NOMOR FILE YG BAKAL DIAMBIL :")
       print(dateInFile)
       
@@ -495,22 +464,42 @@ shiny::shinyApp(
         }
       })
       
-      output$pred_result_table_ui <- function() {
-        
-        datacsv %>%
-          #mutate(car = rownames(.)) %>%
-          mutate(datacsv$MAG <- color_tile("white", "orange")(datacsv$MAG)) %>%
-          select(CITY,LATITUDE, LONGITUDE, Lat_Error, Long_Error, MAG, KEDALAMAN) %>%
-          #filter(mpg <= input$mpg) %>%
-          knitr::kable("html") %>%
-          kable_styling("striped", full_width = F) %>%   scroll_box(width = "100%", height = "700px")
-      }
+      observe({
+        if(!isTruthy(input$lat) && !isTruthy(input$long)){
+          f7Toast(session, text="Turn on your GPS to activate location feature", position="center")
+          datacsv$distance = "NULL"
+          print(head(datacsv))
+          output$pred_result_table_ui =
+            
+            DT::renderDataTable({as.datatable(formattable(datacsv,  list(
+              MAG = color_tile("transparent", "red"))
+            ))})
+        }
+        else{
+          output$map_type<- renderUI({ f7BlockTitle(title="Current Earthquke", size="medium") })  
+          EQLocation <- cbind(data$Bujur,  data$Lintang)
+          YourLocation <- cbind(input$long, input$lat)
+          datacsv$distance <- (distHaversine(EQLocation, YourLocation)/1000)
+          print(head(datacsv))
+          output$mymap <- renderLeaflet({
+            leaflet(data, width="1000", height="1000") %>% 
+              setView(lng =  113.9213257, lat = -0.789275,zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
+              addTiles() %>%
+              addFullscreenControl() %>% addMarkers(lng=input$long, lat=input$lat)%>% 
+              addCircles(data = datacsv, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~sqrt(MAG)*25000, popup = ~as.character(MAG), label = ~as.character(paste0("Magnitude: ", sep = " ", datacsv$CITY)), color = ~pal(MAG), fillOpacity = 0.5)
+          })
+          output$pred_result_table_ui =
+            
+            DT::renderDataTable({as.datatable(formattable(datacsv,  list(
+              MAG = color_tile("transparent", "red"))
+            ))})
+        }
+     
+      })
+   
       
       
     }) 
-    ################################################### END USER INPUT ###################################################################
-    ######################################################################################################################################
-    
   }
 )
 
