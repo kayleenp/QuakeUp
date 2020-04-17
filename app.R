@@ -444,7 +444,7 @@ shiny::shinyApp(
           setView(lng =  113.9213257, lat = -0.789275, zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
           addTiles() %>% 
           addFullscreenControl() %>% 
-          addCircles(data = datacsv, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~sqrt(MAG)*25000, popup = ~as.character(MAG), label = ~as.character(paste0("Magnitude: ", sep = " ", datacsv$CITY)), color = ~pal(MAG), fillOpacity = 0.5)
+          addCircles(data = datacsv, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~sqrt(MAG)*25000, popup = paste0("Wilayah: ", datacsv$CITY, "<br>", "Lintang: ", datacsv$LATITUDE, "<br>", "Bujur: ", datacsv$LONGITUDE, "<br>", "Kedalaman: ", datacsv$KEDALAMAN, "<br>", "Magnitudo: ", datacsv$MAG), label = ~as.character(paste0("Magnitude: ", sep = " ", MAG)), color = ~pal(MAG), fillOpacity = 0.5)
       })
       
       #create the text output
@@ -472,7 +472,7 @@ shiny::shinyApp(
           output$pred_result_table_ui =
             
             DT::renderDataTable({as.datatable(formattable(datacsv,  list(
-              MAG = color_tile("transparent", "red"))
+              MAG = color_tile("transparent", "red") )
             ))})
         }
         else{
@@ -486,12 +486,15 @@ shiny::shinyApp(
               setView(lng =  113.9213257, lat = -0.789275,zoom = 4.5)  %>% #setting the view over ~ center of Indonesia
               addTiles() %>%
               addFullscreenControl() %>% addMarkers(lng=input$long, lat=input$lat)%>% 
-              addCircles(data = datacsv, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~sqrt(MAG)*25000, popup = ~as.character(MAG), label = ~as.character(paste0("Magnitude: ", sep = " ", datacsv$CITY)), color = ~pal(MAG), fillOpacity = 0.5)
+              addCircles(data = datacsv, lat = ~ LATITUDE, lng = ~ LONGITUDE, weight = 1, radius = ~sqrt(MAG)*25000, 
+                         popup = paste0("Wilayah: ", datacsv$CITY, "<br>", "Lintang: ", datacsv$LATITUDE, "<br>", "Bujur: ", datacsv$LONGITUDE, "<br>", 
+                                        "Kedalaman: ", datacsv$KEDALAMAN, "<br>", "Magnitudo: ", datacsv$MAG), label = ~as.character(paste0("Magnitude: ", sep = " ", MAG)), 
+                                        color = ~pal(MAG), fillOpacity = 0.5)
           })
           output$pred_result_table_ui =
             
             DT::renderDataTable({as.datatable(formattable(datacsv,  list(
-              MAG = color_tile("transparent", "red"))
+              MAG = color_tile("transparent", "red") )
             ))})
         }
      
